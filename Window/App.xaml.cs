@@ -1,11 +1,4 @@
-﻿using log4net.Config;
-using System.Configuration;
-using System.Data;
-using System.Windows;
-
-
-
-namespace HLLMapCapture
+﻿namespace HLLMapCapture
 {
     /// <summary>
     /// Interaction logic for App.xaml

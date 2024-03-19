@@ -1,13 +1,4 @@
-﻿using System;
-using System.Buffers.Text;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Linq;
-using System.Xml.Serialization;
-using Windows.Storage.Provider;
+﻿using System.Xml.Linq;
 
 namespace HLLMapCapture;
 internal class Settings

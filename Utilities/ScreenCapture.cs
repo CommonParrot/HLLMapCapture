@@ -1,9 +1,4 @@
-﻿using System.IO;
-using System.Windows;
-using System.Drawing;
-using Windows.ApplicationModel.Activation;
-
-namespace HLLMapCapture;
+﻿namespace HLLMapCapture;
 internal static class ScreenCapture
 {
     /// <summary>

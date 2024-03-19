@@ -1,5 +1,4 @@
-﻿
-using AdonisUI.Controls;
+﻿using AdonisUI.Controls;
 using Microsoft.Win32;
 using System.ComponentModel;
 using System.Diagnostics;
