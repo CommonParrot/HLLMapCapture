@@ -20,6 +20,8 @@ the tool with your team.
 Setting UseCompression to false will result in PNGs being saved and uploaded to the FTP
 server instead of much smaller JPEGs.
 
+You can use your team logo as the app icon, just place an .ico in the Icon folder besides the .exe.
+
 ##### IMPORTANT:
 FTP settings are only a obfuscated for now, not securely encrypted!
 Anyone who reads through this code or decompiles the tool, will find out how to read
