@@ -1,4 +1,5 @@
 ﻿using AdonisUI.Controls;
+using FluentFTP.Helpers;
 using Microsoft.Win32;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -12,9 +13,9 @@ using MessageBoxImage = AdonisUI.Controls.MessageBoxImage;
 
 namespace HLLMapCapture;
 
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
+/// <summary>
+/// Interaction logic for MainWindow.xaml
+/// </summary>
 public partial class MainWindow : AdonisWindow
 {
     private static readonly log4net.ILog log = log4net.LogManager.GetLogger(typeof(MainWindow));
@@ -29,7 +30,7 @@ public partial class MainWindow : AdonisWindow
         var iconDir = Directory.CreateDirectory(Directory.GetCurrentDirectory() + @"\Icon");
         var files = Directory.GetFiles(iconDir.FullName, "*.ico");
         if (files.Length > 0)
-            Icon = new BitmapImage(new Uri(files[0], UriKind.Absolute)); 
+            Icon = new BitmapImage(new Uri(files[0], UriKind.Absolute));
 
         settings = new Settings();
         try
@@ -44,7 +45,7 @@ public partial class MainWindow : AdonisWindow
         }
 
         // Set default path if nothing is configured
-        if (settings.LocalFolderPath != "") 
+        if (settings.LocalFolderPath != "")
         {
             ui_folderPathTextBox.Text = settings.LocalFolderPath;
         }
@@ -66,10 +67,9 @@ public partial class MainWindow : AdonisWindow
         }
 
         settings.SaveSettings();
-        
+
         // Automatically obfuscate FTP settings if there are any
-        if(settings.FtpPassword != null && settings.FtpPassword != ""
-            && !settings.IsObfuscated)
+        if (!settings.FtpPassword.IsBlank() && !settings.IsObfuscated)
         {
             settings.IsObfuscated = true;
             settings.SaveSettings();
@@ -106,53 +106,65 @@ public partial class MainWindow : AdonisWindow
             mapCutOut = ScreenCapture.CutOutMapZoomless(screenshot);
         }
 
-        if (mapCutOut != null)
+        if (mapCutOut == null)
         {
-            //mapCutOut = new Bitmap(mapCutOut, new System.Drawing.Size(1173, 1201));
-            // TODO: This all runs in the UI thread, so only the the last ShowStateMessage this method runs is shown.
-            ShowStateMessage("Screenshot captured and map detected.");
-            string filename = "Screenshot_" + ui_username.Text + "_" + DateTime.Now.ToString("yyyyMMddHHmmss");
-
-            string filePath = Path.Combine(settings.LocalFolderPath, filename);
-
-            try
+            if (ui_stateMessage.Text.Contains("Screenshot uploaded to FTP-Server"))
             {
-                if (!settings.CompressImages)
-                    ImageSaving.SaveAsPNG(mapCutOut, filePath);
-                else
-                    ImageSaving.SaveAsJPEG(mapCutOut, filePath);
-            }
-            catch (Exception ex)
-            {
-                ShowStateMessage("Screenshot couldn't be saved to disk.");
-                log.Error($"Screenshot couldn't be saved to disk. Error: {ex.Message}");
+                ShowStateMessage("Map screen closed. Screenshot upload successful.");
+                log.Info("No map detected in the screenshot. Probably because map was just closed.");
                 return;
             }
+            ShowStateMessage("No map detected in the screenshot.");
+            log.Info("No map detected in the screenshot");
+            return;
+        }
 
-            bool success;
+        // TODO: This all runs in the UI thread, so only the the last ShowStateMessage this method runs is shown.
+        // ShowStateMessage("Screenshot captured and map detected.");
+        string filename = "Screenshot_" + ui_username.Text + "_" + DateTime.Now.ToString("yyyyMMddHHmmss");
+
+        string filePath = Path.Combine(settings.LocalFolderPath, filename);
+
+        try
+        {
+            if (!settings.CompressImages)
+                ImageSaving.SaveAsPNG(mapCutOut, filePath);
+            else
+                ImageSaving.SaveAsJPEG(mapCutOut, filePath);
+        }
+        catch (Exception ex)
+        {
+            ShowStateMessage("Screenshot couldn't be saved to disk.");
+            log.Error($"Screenshot couldn't be saved to disk. Error: {ex.Message}");
+            return;
+        }
+
+        bool success;
+        try
+        {
             if (!settings.CompressImages)
                 success = Ftp.UploadPNG(filePath, settings);
             else
                 success = Ftp.UploadJPEG(filePath, settings);
-
-            if (success)
-            {
-                ShowStateMessage("Screenshot uploaded to FTP-Server.");
-                log.Info("Screenshot uploaded to FTP-Server");
-            }
-            else
-            {
-                ShowStateMessage("Screenshot was captured, but FTP upload failed.");
-                log.Error("Screenshot was captured, but FTP upload failed.");
-            }
+        }
+        catch (Exception ex)
+        {
+            ShowStateMessage("Screenshot was saved, but FTP upload failed.");
+            log.Error($"Screenshot was saved, but FTP upload failed: {ex.Message}");
+            return;
+        }
+        if (success)
+        {
+            ShowStateMessage("Screenshot uploaded to FTP-Server.");
+            log.Info("Screenshot uploaded to FTP-Server");
+            sw.Stop();
+            log.Debug($"Screenshot map detecting and uploading process took: {sw.ElapsedMilliseconds}ms");
         }
         else
         {
-            ShowStateMessage("No map detected in the screenshot.");
-            log.Debug("No map detected in the screenshot");
+            ShowStateMessage("Screenshot was saved, but FTP upload failed.");
+            log.Error("Screenshot was saved, but FTP upload failed.");
         }
-        sw.Stop();
-        log.Info($"The whole map capturing and uploading process took: {sw.ElapsedMilliseconds}ms");
     }
 
     /// <summary>
@@ -163,8 +175,8 @@ public partial class MainWindow : AdonisWindow
     {
         ui_stateMessage.Text = $"State: {message} {DateTime.Now.ToString("HH:mm:ss")}";
     }
-    
-    private void StartButton_Click(object sender, RoutedEventArgs e )
+
+    private void StartButton_Click(object sender, RoutedEventArgs e)
     {
         if (!isListening && !HotKey.isHotkeyRegisterd)
         {
@@ -194,8 +206,7 @@ public partial class MainWindow : AdonisWindow
         settings.SaveSettings();
 
         // Automatically obfuscate FTP settings if there are any
-        if(settings.FtpPassword != null && settings.FtpPassword != ""
-            && !settings.IsObfuscated)
+        if (!settings.FtpPassword.IsBlank() && !settings.IsObfuscated)
         {
             settings.IsObfuscated = true;
             settings.SaveSettings();
