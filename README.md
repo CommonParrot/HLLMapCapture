@@ -6,7 +6,8 @@ the map is open and if it is zoomed out to 1x. If configured that way,
 it will upload this cut out map as a .jpg (or .png if compression is off) 
 to a FTP server for further use.
 
----
+It's written with .NET 8 and only compatible with Windows 10 upwards.
+
 ## How to use:
 
 When first started a settings.xml will be generated, there you can configure the tool.
