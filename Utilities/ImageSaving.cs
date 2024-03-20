@@ -32,8 +32,6 @@ namespace HLLMapCapture
 
         internal static void SaveAsJPEG(Bitmap source, string fullPath, int quality = 97)
         {
-            Stopwatch sw = new Stopwatch();
-            sw.Start();
             using (source)
             {
                 ImageCodecInfo? jpegEncoder = GetEncoder(ImageFormat.Jpeg);
@@ -47,8 +45,6 @@ namespace HLLMapCapture
                     source.Save(fullPath + ".jpg", jpegEncoder, parameters);
                 }
             }
-            sw.Stop();
-            StaticLog.For(typeof(ImageSaving)).Info($"Compressing to .jpg took: {sw.ElapsedMilliseconds}ms");
         }
 
         private static ImageCodecInfo? GetEncoder(ImageFormat format)  
