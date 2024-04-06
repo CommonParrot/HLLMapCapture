@@ -20,21 +20,22 @@ namespace HLLMapCapture
 
 	public static Action? action;
 
-    // Keycode for the M key
-    public const uint VK_M = 77;
+	// Is M by default
+    private static uint hotKeyCode = 77;
 
 	private static bool isMapOpen;
 
 	// Minimum time between screenshots
 	public static int delayMS = 150;
 
-	public static void RegisterWindow(Window window)
+	public static void RegisterWindow(Window window, uint keyCode = 77)
 	{
 		_Window = window;
+		hotKeyCode = keyCode;
 		IntPtr handle = new WindowInteropHelper(_Window).Handle;
 		_source = HwndSource.FromHwnd(handle);
 		_source.AddHook(HwndHook);
-		RegisterHotKey();
+		RegisterHotKey((int)keyCode);
 	}
 
 	public static void Unregister()
@@ -52,17 +53,29 @@ namespace HLLMapCapture
 
 	[DllImport("user32.dll")]
 	public static extern bool UnregisterHotKey(IntPtr hWnd, int id);
-
-	private static void RegisterHotKey()
+	
+	/// <summary>
+	/// Registers a HotKey to the application window.
+	/// Registers the key alone and in combination with the shift modifier.
+	/// The two hotkeys are registered under the hotkey ids which are statically defined,
+	/// in the class for future reference.
+	/// </summary>
+	/// <param name="keyCode">Keycode of the hotkey</param>
+	private static void RegisterHotKey(int keyCode)
 	{
 		WindowInteropHelper windowInteropHelper = new WindowInteropHelper(_Window);
-		if (!RegisterHotKey(windowInteropHelper.Handle, HOTKEY_ID, 0, 77) || !RegisterHotKey(windowInteropHelper.Handle, HOTKEY_ID2, 4, 77))
+		if (!RegisterHotKey(windowInteropHelper.Handle, HOTKEY_ID, 0, keyCode) 
+				|| !RegisterHotKey(windowInteropHelper.Handle, HOTKEY_ID2, 4, keyCode))
 		{
 			log.Error("Hotkey registration was unsuccessful.");
 		}
 		isHotkeyRegisterd = true;
 	}
 
+	/// <summary>
+	/// Unregisters the two hotkeys (hotkey & hotkey+shift) referenced by
+	/// the statically defined hotkey ids.
+	/// </summary>
 	private static void UnregisterHotKey()
 	{
 		WindowInteropHelper windowInteropHelper = new WindowInteropHelper(_Window);
@@ -98,7 +111,7 @@ namespace HLLMapCapture
 			Thread.Sleep(delayMS);
 			log.Info("Hotkey Pressed.");
 			action?.Invoke();
-			RegisterHotKey();
+			RegisterHotKey((int)hotKeyCode);
 		}
 		catch (Exception ex)
 		{
@@ -106,9 +119,13 @@ namespace HLLMapCapture
 		}
 	}
 
+	/// <summary>
+	/// Fires the keyboard event which was intercepted by the hotkey triggering,
+	/// to open/close the map in game.
+	/// </summary>
 	private static void ToggleMap()
 	{
-		keybd_event((byte)VK_M, 0, 1u, 0u);
+		keybd_event((byte)hotKeyCode, 0, 1u, 0u);
 		isMapOpen = !isMapOpen;
 	}
 

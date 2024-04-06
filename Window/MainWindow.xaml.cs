@@ -6,7 +6,9 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Media.Imaging;
+using Input = System.Windows.Input;
 using MessageBox = AdonisUI.Controls.MessageBox;
 using MessageBoxButton = AdonisUI.Controls.MessageBoxButton;
 using MessageBoxImage = AdonisUI.Controls.MessageBoxImage;
@@ -23,6 +25,9 @@ public partial class MainWindow : AdonisWindow
     public string SelectedFolderPath { get; private set; } = "";
     private Settings settings;
 
+    /// <summary>
+    /// Window setup, loads the icon, settings and sets the settings values in the UI.
+    /// </summary>
     public MainWindow()
     {
         InitializeComponent();
@@ -45,26 +50,26 @@ public partial class MainWindow : AdonisWindow
         }
 
         // Set default path if nothing is configured
-        if (settings.LocalFolderPath != "")
-        {
-            ui_folderPathTextBox.Text = settings.LocalFolderPath;
-        }
-        else
-        {
+        if (settings.LocalFolderPath == "")
+        { 
             Directory.CreateDirectory(Directory.GetCurrentDirectory() + @"\Screenshots");
             settings.LocalFolderPath = Directory.GetCurrentDirectory() + @"\Screenshots";
-            ui_folderPathTextBox.Text = settings.LocalFolderPath;
         }
+        ui_folderPathTextBox.Text = settings.LocalFolderPath;
 
-        if (settings.Username != "")
+        if (!Char.IsLetterOrDigit(settings.HotKey))
         {
-            ui_username.Text = settings.Username;
+            log.Info("HotKey in the settings file wasn't a digit or letter.");
+            settings.HotKey = 'M';
         }
-        else
+        ui_startButtonHint.Text = "Toggle listening for HotKey: " + settings.HotKey;
+
+        if (settings.Username == "")
         {
+            log.Info("Username in the settings file was empty.");
             settings.Username = "user";
-            ui_username.Text = settings.Username;
         }
+        ui_username.Text = settings.Username;
 
         settings.SaveSettings();
 
@@ -89,6 +94,45 @@ public partial class MainWindow : AdonisWindow
             ui_folderPathTextBox.Text = SelectedFolderPath;
             settings.LocalFolderPath = SelectedFolderPath;
         }
+    }
+
+    private void SelectHotKey_Click(object sender, RoutedEventArgs e)
+    {
+        if (isListening)
+        {
+            log.Error("Cannot change HotKey while capture process is active!");
+            ShowStateMessage("Cannot change HotKey while capture process is active!");
+            return;
+        }
+        PreviewKeyDown += SetNewHotKey;
+        log.Debug("HotKey selection started.");
+        ShowStateMessage($"Listening for new HotKey, please press a letter or digit key.");
+    }
+
+    /// <summary>
+    /// When a key was pressed while this handler was active and
+    /// the key was a digit or letter, it is set and saved as the new HotKey.
+    /// </summary>
+    /// <param name="sender"></param>
+    /// <param name="e"></param>
+    void SetNewHotKey(object sender, Input.KeyEventArgs e)
+    {
+        if (!(e.Key >= Key.D0 && e.Key <= Key.D9) 
+            && !(e.Key >= Key.NumPad0 && e.Key <= Key.NumPad9)
+            && !(e.Key >= Key.A && e.Key <= Key.Z))
+        {
+            log.Warn($"HotKey has to be a digit or letter, but: {e.Key} was pressed.");
+            ShowStateMessage($"HotKey has to be a digit or letter, but: {e.Key} was pressed.");
+            return;
+        }
+        int virtualKey = KeyInterop.VirtualKeyFromKey(e.Key);
+        char keyChar = new KeysConverter().ConvertToString(virtualKey)[0];
+        settings.HotKey = keyChar;
+        settings.SaveSettings();
+        ShowStateMessage($"New HotKey: {keyChar} selected.");
+        ui_startButtonHint.Text = "Toggle listening for HotKey: " + settings.HotKey;
+        
+        PreviewKeyDown -= SetNewHotKey;
     }
 
     /// <summary>
@@ -175,12 +219,17 @@ public partial class MainWindow : AdonisWindow
     {
         ui_stateMessage.Text = $"State: {message} {DateTime.Now.ToString("HH:mm:ss")}";
     }
-
-    private void StartButton_Click(object sender, RoutedEventArgs e)
+    
+    /// <summary>
+    /// Toggles listening for the HotKey to capture a screenshot.
+    /// </summary>
+    /// <param name="sender"></param>
+    /// <param name="e"></param>
+    private void CaptureToggle_Click(object sender, RoutedEventArgs e)
     {
         if (!isListening && !HotKey.isHotkeyRegisterd)
         {
-            HotKey.RegisterWindow(this);
+            HotKey.RegisterWindow(this, settings.HotKey);
             HotKey.action = new Action(() => StartMapCapture());
             isListening = true;
             ui_startButton.Visibility = Visibility.Hidden;

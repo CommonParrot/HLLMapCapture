@@ -9,7 +9,8 @@
                          xmlns:shadowcommandercapture="clr-namespace:HLLMapCapture"
                          mc:Ignorable="d"
                          Title="HLL Map Capture"
-                         Width="640" Height="360" MinWidth="640" MinHeight="380"
+                         Width="700" Height="400"
+                         MinWidth="700" MinHeight="400"
                          Closing="Window_Closing">
 
     <adonisControls:AdonisWindow.Style>
@@ -45,7 +46,6 @@
                 <Setter Property="FontSize" Value="11"/>
                 <Setter Property="Margin" Value="{adonisUi:Space 2, 1, 1, 1}"/>
             </Style>
-
         </ResourceDictionary>
     </Window.Resources>
 
@@ -130,6 +130,8 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
@@ -142,7 +144,7 @@
                 <TextBlock>Username:</TextBlock>
             </Grid>
             <Grid Grid.Row="1" Grid.Column="0" HorizontalAlignment="Left" Margin="30,0,30,0">
-                <TextBox x:Name="ui_username" HorizontalAlignment="Center" VerticalAlignment="Top" Height="30" MinWidth="60" Text="user"/>
+                <TextBox x:Name="ui_username" HorizontalAlignment="Center" VerticalAlignment="Top" Height="30" MinWidth="30" Text="user"/>
             </Grid>
             <Grid Grid.Row="2" Grid.Column="0" HorizontalAlignment="Left" Margin="30,10,10,10">
                 <TextBlock>Screenshot save folder:</TextBlock>
@@ -153,21 +155,34 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <Button Grid.Column="0" Margin="0,0,10,0" Content="Browse" MinWidth="60" DockPanel.Dock="Right" Click="SelectFolderButton_Click"/>
+                    <Button Grid.Column="0" Margin="0,0,10,0" Content="Browse" MinWidth="30" DockPanel.Dock="Right" Click="SelectFolderButton_Click"/>
                     <TextBox Grid.Column="1" x:Name="ui_folderPathTextBox" IsReadOnly="True" Text="Default folder selected" TextAlignment="Center" Height="30" Width="Auto"/>
                 </Grid>
             </Grid>
-            <Grid Grid.Row="4" Grid.Column="0" HorizontalAlignment="Left" Margin="30,0,10,0">
-                <TextBlock x:Name="ui_stateMessage" VerticalAlignment="Bottom">Last state message: </TextBlock>
+            <Grid Grid.Row="4" Grid.Column="0" HorizontalAlignment="Left" Margin="30,10,10,10">
+                <TextBlock>HotKey:</TextBlock>
             </Grid>
-            <Grid Grid.Row="5" Grid.Column="0" HorizontalAlignment="Center" >
-                <TextBlock x:Name="ui_startButtonHint" VerticalAlignment="Bottom">Toggle listening for Hotkey: M</TextBlock>
+            <Grid Grid.Row="5" Grid.Column="0" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="30, 0, 10, 0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Button Grid.Column="0" Margin="0,0,10,0" Content="Remap" MinWidth="30" DockPanel.Dock="Right" Click="SelectHotKey_Click"/>
+                    <TextBlock Grid.Column="1" x:Name="ui_hotKeyText" TextAlignment="Center" Height="30" Width="Auto"/>
+                </Grid>
             </Grid>
-            <Grid Grid.Row="6" Grid.Column="0" HorizontalAlignment="Center" Margin="10">
-                <Button x:Name="ui_startButton" Visibility="Visible" adonisExtensions:CursorSpotlightExtension.BackgroundBrush="DarkRed" Content="Start" Width="100" Height="50" Margin="10" Background="#AD2E24"  Click="StartButton_Click"/>
-                <Button x:Name="ui_stopButton" Visibility="Hidden" adonisExtensions:CursorSpotlightExtension.BackgroundBrush="DarkGreen" Content="Active" Width="100" Height="50" Margin="10" Background="#109648" Click="StartButton_Click"/>
+            <Grid Grid.Row="6" Grid.Column="0" HorizontalAlignment="Left" Margin="30,0,10,0">
+                <TextBlock x:Name="ui_stateMessage" VerticalAlignment="Bottom">State message: </TextBlock>
             </Grid>
-            <Grid Grid.Column="1" Grid.RowSpan="7" Margin="20">
+            <Grid Grid.Row="7" Grid.Column="0" HorizontalAlignment="Center" >
+                <TextBlock x:Name="ui_startButtonHint" VerticalAlignment="Bottom">Toggle listening for HotKey: M</TextBlock>
+            </Grid>
+            <Grid Grid.Row="8" Grid.Column="0" HorizontalAlignment="Center" Margin="10">
+                <Button x:Name="ui_startButton" Visibility="Visible" adonisExtensions:CursorSpotlightExtension.BackgroundBrush="DarkRed" Content="Start" Width="100" Height="50" Margin="10" Background="#AD2E24"  Click="CaptureToggle_Click"/>
+                <Button x:Name="ui_stopButton" Visibility="Hidden" adonisExtensions:CursorSpotlightExtension.BackgroundBrush="DarkGreen" Content="Active" Width="100" Height="50" Margin="10" Background="#109648" Click="CaptureToggle_Click"/>
+            </Grid>
+            <Grid Grid.Column="1" Grid.RowSpan="9" Margin="20">
                 <TextBlock Foreground="Yellow">How to use the program
                     <LineBreak/>
                             1. [the important part]

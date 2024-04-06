@@ -8,6 +8,7 @@ internal class Settings
 
     public string LocalFolderPath { get; set; } = "";
     public string Username { get; set; } = "";
+    public char HotKey { get; set; } = 'M';
     public bool CompressImages { get; set; } = true;
     public bool IsObfuscated { get; set; } = false;
     public string? FtpServer { get; set; } = "";
@@ -15,6 +16,11 @@ internal class Settings
     public string? FtpUsername { get; set; } = "";
     public string? FtpPassword { get; set; } = "";
 
+    /// <summary>
+    /// Loads and deserializes the settings.xml from the statically set path.
+    /// Also deserializes the obfuscated ftp settings.
+    /// </summary>
+    /// <exception cref="Exception">Throws when the xml file doesn't exist or is not in xml format.</exception>
     public void LoadSettings()
     {
         var doc = XDocument.Load(SettingsFilePath);
@@ -38,6 +44,9 @@ internal class Settings
         string? localFolder= root.Element("LocalFolderPath")?.Value;
         if (localFolder != null)
             LocalFolderPath = localFolder;
+        char? hotKey= root.Element("HotKey")?.Value[0];
+        if (hotKey != null)
+            HotKey = (char)hotKey;
 
         if (!IsObfuscated)
         {
@@ -60,6 +69,9 @@ internal class Settings
         }
     }
 
+    /// <summary>
+    /// Serializes and saves the current settings and obfuscates FTP data if obfuscation is enabled.
+    /// </summary>
     public void SaveSettings()
     {
         try
@@ -90,6 +102,7 @@ internal class Settings
                 new XElement("Settings",
                     new XElement("LocalFolderPath", LocalFolderPath),
                     new XElement("Username", Username),
+                    new XElement("HotKey", HotKey),
                     new XElement("CompressImages", CompressImages),
                     new XElement("IsObfuscated", IsObfuscated),
                     xFtpServer, xFtpFolerPath, xFtpUsername, xFtpPassword)
