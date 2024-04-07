@@ -1,12 +1,11 @@
 # Hell Let Loose Map Capture
 
 This is a tool to create screenshots of the map screen in HLL.
-It listens on the M Key, to make a screenshot of the game, then detects if the 
-the map is open and if it is zoomed out to 1x. If configured that way, 
-it will upload this cut out map as a .jpg (or .png if compression is off) 
-to a FTP server for further use.
+It listens on the M Key (remapable), to make a screenshot of the game, then detects if the 
+the map is open and if it is zoomed out to 1x. If configured correctly, 
+it will upload this map cutout to a FTP server for further use.
 
-It's written with .NET 8 and only compatible with Windows 10 upwards.
+It's written in C# for .NET 8 and only compatible with Windows 10 upwards (because of some WPF and WinForms features being used).
 
 ## How to use:
 
@@ -28,13 +27,13 @@ You can use your team logo as the app icon, just place an .ico in the Icon folde
 
 1. Install the .NET 8 SDK: https://learn.microsoft.com/en-us/dotnet/core/sdk#how-to-install-the-net-sdk
 2. Run this command in this repositories folder:
-	```dotnet publish -p:Password=$YourPassword .\HLLMapCapture.sln```
+	```dotnet publish -p:Password=YourPassword .\HLLMapCapture.sln```
 3. You can then find the build under: HLLMapCapture\bin\Release\net8.0-windows\win-x64\publish
 #### How to release the build:
 1. Start the .exe once
 2. Set the FTP settings in the .xml
-3. Include your team icon
-4. Start the app again to obfuscate the settings with your custom password
+3. Optional: Include your team icon (.ico file under ./Icon/)
+4. Start the app again to obfuscate the FTP settings with your custom password
 5. Zip the publish folder and send to your mates.
 
 
@@ -44,6 +43,6 @@ Anyone who reads through this code (if you use the pre-built release)
 or decompiles the tool, will find out how to read the obfuscated settings 
 in plain text, if they are determined to do so!
 
-It's best to build the tool once for your team with your custom password.
+It's best to build the tool once for your team, with your custom password.
 
 Be sure to restrict the FTP users rights to what is necessary.
