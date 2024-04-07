@@ -15,16 +15,15 @@ namespace HLLMapCapture
     /// to your FTP server.
     /// It is best to limit the configured FTP user to a limited scope on your server.
     /// </summary>
-    internal static class Obfuscator
+    internal static partial class Obfuscator
     {
-        private static string key { get {
-                string? name = Assembly.GetExecutingAssembly().GetName().Name;
-                if (name == null) name = "HLLMapCapture";
-                byte[] bytes = Encoding.UTF8.GetBytes(name);
-                MD5 mD5 = MD5.Create();
-                string hash = Convert.ToBase64String(mD5.ComputeHash(bytes));
-                return hash;
-            } }
+        /// <summary>
+        /// The implementation for this method is provided by the source generator
+        /// ObfuscatorBuildSettings.SourceGenerator (different project same repository).
+        /// Might show up as error in the editor -> build both projects -> restart Visual Studio
+        /// </summary>
+        /// <returns>A key used for obfuscating ftp settings/credentials.</returns>
+        private static partial string GetKey();
 
         public static string ObfuscateString(string? plainText)
         {
@@ -37,7 +36,7 @@ namespace HLLMapCapture
 
             using (Aes aes = Aes.Create())
             {
-                aes.Key = Encoding.UTF8.GetBytes(key);
+                aes.Key = Encoding.UTF8.GetBytes(GetKey());
                 aes.IV = iv;
 
                 ICryptoTransform encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
@@ -70,7 +69,7 @@ namespace HLLMapCapture
 
             using (Aes aes = Aes.Create())
             {
-                aes.Key = Encoding.UTF8.GetBytes(key);
+                aes.Key = Encoding.UTF8.GetBytes(GetKey());
                 aes.IV = iv;
                 ICryptoTransform decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
 

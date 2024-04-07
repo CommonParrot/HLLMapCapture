@@ -23,11 +23,27 @@ server instead of much smaller JPEGs.
 
 You can use your team logo as the app icon, just place an .ico in the Icon folder besides the .exe.
 
-##### IMPORTANT:
-FTP settings are only a obfuscated for now, not securely encrypted!
-Anyone who reads through this code or decompiles the tool, will find out how to read
-the obfuscated settings in plain text, if they are determined to do so!
-You can change the code to use your own password/key in Obfuscator.cs, but even then
-the program can still be decompiled.
+## How to build:
+
+
+1. Install the .NET 8 SDK: https://learn.microsoft.com/en-us/dotnet/core/sdk#how-to-install-the-net-sdk
+2. Run this command in this repositories folder:
+	```dotnet publish -p:Password=$YourPassword .\HLLMapCapture.sln```
+3. You can then find the build under: HLLMapCapture\bin\Release\net8.0-windows\win-x64\publish
+#### How to release the build:
+1. Start the .exe once
+2. Set the FTP settings in the .xml
+3. Include your team icon
+4. Start the app again to obfuscate the settings with your custom password
+5. Zip the publish folder and send to your mates.
+
+
+## IMPORTANT:
+FTP settings are only obfuscated, not securely encrypted!
+Anyone who reads through this code (if you use the pre-built release)
+or decompiles the tool, will find out how to read the obfuscated settings 
+in plain text, if they are determined to do so!
+
+It's best to build the tool once for your team with your custom password.
 
 Be sure to restrict the FTP users rights to what is necessary.
