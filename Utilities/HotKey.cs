@@ -26,7 +26,7 @@ namespace HLLMapCapture
 	private static bool isMapOpen;
 
 	// Minimum time between screenshots
-	public static int delayMS = 150;
+	public static int delayMS = 300;
 
 	public static void RegisterWindow(Window window, uint keyCode = 77)
 	{
