@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
+using Windows.System;
 using Input = System.Windows.Input;
 using MessageBox = AdonisUI.Controls.MessageBox;
 using MessageBoxButton = AdonisUI.Controls.MessageBoxButton;
@@ -24,6 +25,7 @@ public partial class MainWindow : AdonisWindow
     private bool isListening = false;
     public string SelectedFolderPath { get; private set; } = "";
     private Settings settings;
+    private string currentStateMessage = "";
 
     /// <summary>
     /// Window setup, loads the icon, settings and sets the settings values in the UI.
@@ -51,18 +53,34 @@ public partial class MainWindow : AdonisWindow
 
         // Set default path if nothing is configured
         if (settings.LocalFolderPath == "")
-        { 
+        {
             Directory.CreateDirectory(Directory.GetCurrentDirectory() + @"\Screenshots");
             settings.LocalFolderPath = Directory.GetCurrentDirectory() + @"\Screenshots";
         }
         ui_folderPathTextBox.Text = settings.LocalFolderPath;
 
-        if (!Char.IsLetterOrDigit(settings.HotKey))
+        // Set default HotKey if nothing is configured/badly configured
+        if (!Enum.IsDefined(typeof(VirtualKey), settings.HotKey))
         {
-            log.Info("HotKey in the settings file wasn't a digit or letter.");
-            settings.HotKey = 'M';
+            log.Info("HotKey in settings is not a defined virtual key.");
+            settings.HotKey = (int)VirtualKey.M;
         }
-        ui_startButtonHint.Text = "Toggle listening for HotKey: " + settings.HotKey;
+
+        // Show which hotkey is selected
+        switch ((VirtualKey)settings.HotKey)
+        {
+            case VirtualKey.XButton1:
+            case VirtualKey.XButton2:
+                ui_startButtonHint.Text = "Toggle listening for HotKey: Extra mouse button";
+                break;
+            case VirtualKey.MiddleButton:
+                ui_startButtonHint.Text = "Toggle listening for HotKey: Middle mouse button";
+                break;
+            default:
+                ui_startButtonHint.Text = "Toggle listening for HotKey: "
+                    + ((VirtualKey)settings.HotKey).ToString();
+                break;
+        }
 
         if (settings.Username == "")
         {
@@ -104,9 +122,58 @@ public partial class MainWindow : AdonisWindow
             ShowStateMessage("Cannot change HotKey while capture process is active!");
             return;
         }
-        PreviewKeyDown += SetNewHotKey;
+        PreviewKeyUp += SetNewHotKey;
+        PreviewMouseUp += SetNewMouseHotKey;
         log.Debug("HotKey selection started.");
-        ShowStateMessage($"Listening for new HotKey, please press a letter or digit key.");
+        ShowStateMessage($"Select a new HotKey. \n Allowed: 0-9, a-z, middle or extra mouse button.");
+    }
+
+    /// <summary>
+    /// When a key was pressed while this handler was active and
+    /// the key was a digit or letter, it is set and saved as the new HotKey.
+    /// </summary>
+    /// <param name="sender"></param>
+    /// <param name="e"></param>
+    void SetNewMouseHotKey(object sender, MouseButtonEventArgs e)
+    {
+        VirtualKey key = VirtualKey.None;
+        switch (e.ChangedButton)
+        {
+            case MouseButton.Left:
+                log.Warn($"Left mouse button can't be assigned.");
+                ShowStateMessage($"Left mouse button can't be assigned.");
+                break;
+            case MouseButton.Middle:
+                key = VirtualKey.MiddleButton;
+                ShowStateMessage($"New HotKey: Middle Mouse Button selected.");
+                ui_startButtonHint.Text = "Toggle listening for HotKey: Middle Mouse Button";
+                break;
+            case MouseButton.Right:
+                log.Warn($"Right mouse button can't be assigned.");
+                ShowStateMessage($"Right mouse button can't be assigned.");
+                break;
+            case MouseButton.XButton1:
+                ShowStateMessage($"New HotKey: Extra Mouse Button selected.");
+                ui_startButtonHint.Text = "Toggle listening for HotKey: Extra Mouse Button";
+                key = VirtualKey.XButton1;
+                break;
+            case MouseButton.XButton2:
+                ShowStateMessage($"New HotKey: Extra Mouse Button selected.");
+                ui_startButtonHint.Text = "Toggle listening for HotKey: Extra Mouse Button";
+                key = VirtualKey.XButton2;
+                break;
+        }
+        if (key == VirtualKey.None)
+        {
+            log.Warn($"Mouse key was not recognized.");
+            ShowStateMessage($"Only Middle and Extra Mouse Buttons can be used!");
+            return;
+        }
+        settings.HotKey = (int)key;
+        settings.SaveSettings();
+
+        PreviewKeyUp -= SetNewHotKey;
+        PreviewMouseUp -= SetNewMouseHotKey;
     }
 
     /// <summary>
@@ -117,7 +184,7 @@ public partial class MainWindow : AdonisWindow
     /// <param name="e"></param>
     void SetNewHotKey(object sender, Input.KeyEventArgs e)
     {
-        if (!(e.Key >= Key.D0 && e.Key <= Key.D9) 
+        if (!(e.Key >= Key.D0 && e.Key <= Key.D9)
             && !(e.Key >= Key.NumPad0 && e.Key <= Key.NumPad9)
             && !(e.Key >= Key.A && e.Key <= Key.Z))
         {
@@ -125,14 +192,14 @@ public partial class MainWindow : AdonisWindow
             ShowStateMessage($"HotKey has to be a digit or letter, but: {e.Key} was pressed.");
             return;
         }
-        int virtualKey = KeyInterop.VirtualKeyFromKey(e.Key);
-        char keyChar = new KeysConverter().ConvertToString(virtualKey)[0];
-        settings.HotKey = keyChar;
+        VirtualKey virtualKey = (VirtualKey)KeyInterop.VirtualKeyFromKey(e.Key);
+        settings.HotKey = (int)virtualKey;
         settings.SaveSettings();
-        ShowStateMessage($"New HotKey: {keyChar} selected.");
-        ui_startButtonHint.Text = "Toggle listening for HotKey: " + settings.HotKey;
-        
-        PreviewKeyDown -= SetNewHotKey;
+        ShowStateMessage($"New HotKey: {virtualKey.ToString()} selected.");
+        ui_startButtonHint.Text = "Toggle listening for HotKey: " + ((VirtualKey)settings.HotKey).ToString();
+
+        PreviewKeyUp -= SetNewHotKey;
+        PreviewMouseUp -= SetNewMouseHotKey;
     }
 
     /// <summary>
@@ -144,6 +211,9 @@ public partial class MainWindow : AdonisWindow
         Stopwatch sw = new Stopwatch();
         sw.Start();
 
+        // TODO: This all runs in the UI thread, so only the the last ShowStateMessage this method runs is shown.
+        string stateMessage = "";
+
         Bitmap? mapCutOut = null;
         using (Bitmap screenshot = ScreenCapture.CreateScreenshot())
         {
@@ -152,20 +222,21 @@ public partial class MainWindow : AdonisWindow
 
         if (mapCutOut == null)
         {
-            if (ui_stateMessage.Text.Contains("Screenshot uploaded to FTP-Server"))
+            if (currentStateMessage.Contains("Screenshot uploaded to FTP-Server"))
             {
-                ShowStateMessage("Map screen closed. Screenshot upload successful.");
+                stateMessage = "Map screen closed. Screenshot upload successful.";
                 log.Info("No map detected in the screenshot. Probably because map was just closed.");
+                // Update the UI message even when the detection is running in a thread
+                Dispatcher.Invoke(delegate () { ShowStateMessage(stateMessage); });
                 return;
             }
-            ShowStateMessage("No map detected in the screenshot.");
+            stateMessage = "No map detected in the screenshot.";
             log.Info("No map detected in the screenshot");
+            Dispatcher.Invoke(delegate () { ShowStateMessage(stateMessage); });
             return;
         }
 
-        // TODO: This all runs in the UI thread, so only the the last ShowStateMessage this method runs is shown.
-        // ShowStateMessage("Screenshot captured and map detected.");
-        string filename = "Screenshot_" + ui_username.Text + "_" + DateTime.Now.ToString("yyyyMMddHHmmss");
+        string filename = "Screenshot_" + settings.Username + "_" + DateTime.Now.ToString("yyyyMMddHHmmss");
 
         string filePath = Path.Combine(settings.LocalFolderPath, filename);
 
@@ -178,8 +249,9 @@ public partial class MainWindow : AdonisWindow
         }
         catch (Exception ex)
         {
-            ShowStateMessage("Screenshot couldn't be saved to disk.");
+            stateMessage = "Screenshot couldn't be saved to disk.";
             log.Error($"Screenshot couldn't be saved to disk. Error: {ex.Message}");
+            Dispatcher.Invoke(delegate () { ShowStateMessage(stateMessage); });
             return;
         }
 
@@ -193,22 +265,24 @@ public partial class MainWindow : AdonisWindow
         }
         catch (Exception ex)
         {
-            ShowStateMessage("Screenshot was saved, but FTP upload failed.");
+            stateMessage = "Screenshot was saved, but FTP upload failed.";
             log.Error($"Screenshot was saved, but FTP upload failed: {ex.Message}");
+            Dispatcher.Invoke(delegate () { ShowStateMessage(stateMessage); });
             return;
         }
         if (success)
         {
-            ShowStateMessage("Screenshot uploaded to FTP-Server.");
+            stateMessage = "Screenshot uploaded to FTP-Server.";
             log.Info("Screenshot uploaded to FTP-Server");
             sw.Stop();
             log.Debug($"Screenshot map detecting and uploading process took: {sw.ElapsedMilliseconds}ms");
         }
         else
         {
-            ShowStateMessage("Screenshot was saved, but FTP upload failed.");
+            stateMessage = "Screenshot was saved, but FTP upload failed.";
             log.Error("Screenshot was saved, but FTP upload failed.");
         }
+        Dispatcher.Invoke(delegate () { ShowStateMessage(stateMessage); });
     }
 
     /// <summary>
@@ -218,8 +292,9 @@ public partial class MainWindow : AdonisWindow
     private void ShowStateMessage(string message)
     {
         ui_stateMessage.Text = $"State: {message} {DateTime.Now.ToString("HH:mm:ss")}";
+        currentStateMessage = ui_stateMessage.Text;
     }
-    
+
     /// <summary>
     /// Toggles listening for the HotKey to capture a screenshot.
     /// </summary>
@@ -229,8 +304,9 @@ public partial class MainWindow : AdonisWindow
     {
         if (!isListening && !HotKey.isHotkeyRegisterd)
         {
-            HotKey.RegisterWindow(this, settings.HotKey);
-            HotKey.action = new Action(() => StartMapCapture());
+            if (settings.HotKey <= 6) HotKey.RegisterMouseKey(settings.HotKey);
+            else HotKey.RegisterWindow(this, (uint)settings.HotKey);
+            HotKey.action = new Action(StartMapCapture);
             isListening = true;
             ui_startButton.Visibility = Visibility.Hidden;
             ui_stopButton.Visibility = Visibility.Visible;
@@ -251,6 +327,8 @@ public partial class MainWindow : AdonisWindow
 
     private void Window_Closing(object sender, CancelEventArgs e)
     {
+        HotKey.Unregister();
+
         settings.Username = ui_username.Text;
         settings.SaveSettings();
 

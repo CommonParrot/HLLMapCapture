@@ -1,4 +1,5 @@
 ﻿using System.Xml.Linq;
+using Windows.System;
 
 namespace HLLMapCapture;
 internal class Settings
@@ -8,7 +9,7 @@ internal class Settings
 
     public string LocalFolderPath { get; set; } = "";
     public string Username { get; set; } = "";
-    public char HotKey { get; set; } = 'M';
+    public int HotKey { get; set; } = (int)VirtualKey.M;
     public bool CompressImages { get; set; } = true;
     public bool IsObfuscated { get; set; } = false;
     public string? FtpServer { get; set; } = "";
@@ -41,12 +42,15 @@ internal class Settings
         string? username= root.Element("Username")?.Value;
         if (username != null)
              Username = username;
+
         string? localFolder= root.Element("LocalFolderPath")?.Value;
         if (localFolder != null)
             LocalFolderPath = localFolder;
-        char? hotKey= root.Element("HotKey")?.Value[0];
-        if (hotKey != null)
-            HotKey = (char)hotKey;
+
+        if (int.TryParse(root.Element("HotKey")?.Value, out int hotKey))
+            HotKey = hotKey;
+        else
+            HotKey = (int)VirtualKey.M;
 
         if (!IsObfuscated)
         {
