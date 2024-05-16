@@ -70,8 +70,10 @@ public partial class MainWindow : AdonisWindow
         switch ((VirtualKey)settings.HotKey)
         {
             case VirtualKey.XButton1:
+                ui_startButtonHint.Text = "Toggle listening for HotKey: Extra mouse button 1";
+                break;
             case VirtualKey.XButton2:
-                ui_startButtonHint.Text = "Toggle listening for HotKey: Extra mouse button";
+                ui_startButtonHint.Text = "Toggle listening for HotKey: Extra mouse button 2";
                 break;
             case VirtualKey.MiddleButton:
                 ui_startButtonHint.Text = "Toggle listening for HotKey: Middle mouse button";
@@ -145,7 +147,7 @@ public partial class MainWindow : AdonisWindow
                 break;
             case MouseButton.Middle:
                 key = VirtualKey.MiddleButton;
-                ShowStateMessage($"New HotKey: Middle Mouse Button selected.");
+                ShowStateMessage($"Middle Mouse Button selected.");
                 ui_startButtonHint.Text = "Toggle listening for HotKey: Middle Mouse Button";
                 break;
             case MouseButton.Right:
@@ -153,13 +155,13 @@ public partial class MainWindow : AdonisWindow
                 ShowStateMessage($"Right mouse button can't be assigned.");
                 break;
             case MouseButton.XButton1:
-                ShowStateMessage($"New HotKey: Extra Mouse Button selected.");
-                ui_startButtonHint.Text = "Toggle listening for HotKey: Extra Mouse Button";
+                ShowStateMessage($"Extra Mouse Button 1 is the new HotKey.");
+                ui_startButtonHint.Text = "Toggle listening for HotKey: Extra Mouse Button 1";
                 key = VirtualKey.XButton1;
                 break;
             case MouseButton.XButton2:
-                ShowStateMessage($"New HotKey: Extra Mouse Button selected.");
-                ui_startButtonHint.Text = "Toggle listening for HotKey: Extra Mouse Button";
+                ShowStateMessage($"Extra Mouse Button 2 is the new HotKey.");
+                ui_startButtonHint.Text = "Toggle listening for HotKey: Extra Mouse Button 2";
                 key = VirtualKey.XButton2;
                 break;
         }

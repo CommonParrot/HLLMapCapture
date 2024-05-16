@@ -1,10 +1,7 @@
 ﻿using System.Diagnostics;
-using System.Runtime.ConstrainedExecution;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
-using System.Xml.Serialization;
-using Windows.Devices.Printers.Extensions;
 using Windows.System;
 
 namespace HLLMapCapture
@@ -26,11 +23,12 @@ namespace HLLMapCapture
 
         private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
 
-        private static LowLevelMouseProc _mouseProc = OnMouseHotKeyPressed;
+        private static LowLevelMouseProc _mouseProc = LLMouseProc;
         // Reference for the mouse hook. Used for disconnecting the hook.
         private static IntPtr _mouseHookID = IntPtr.Zero;
         // Value which is checked against in the _mouseProc, when a mouse message is received
         private static int mouseHotKeyCode = 520;
+        private static int mouseExtraButtonIndex = 1;
         public static Thread? _mouseActionThread = null;
 
         public static bool isHotkeyRegisterd;
@@ -45,8 +43,6 @@ namespace HLLMapCapture
         private static uint hotKeyCode = 77;
 
         private static bool isMouseHotKey = false;
-
-        private static bool isMapOpen;
 
         // Minimum time between screenshots
         public static int delayMS = 300;
@@ -79,6 +75,7 @@ namespace HLLMapCapture
                 _source = null;
                 if (!isMouseHotKey) UnregisterHotKey();
                 else UnhookWindowsHookEx(_mouseHookID);
+                isHotkeyRegisterd = false;
             }
         }
 
@@ -90,7 +87,7 @@ namespace HLLMapCapture
         private static IntPtr SetMouseHook(LowLevelMouseProc proc)
         {
             using (Process curProcess = Process.GetCurrentProcess())
-            using (ProcessModule curModule = curProcess.MainModule)
+            using (ProcessModule? curModule = curProcess.MainModule)
             {
                 return SetWindowsHookEx(WH_MOUSE_LL, proc, GetModuleHandle(curModule.ModuleName), 0);
             }
@@ -156,10 +153,16 @@ namespace HLLMapCapture
         /// <returns>True when the keycode is from the Middle or Extra Mouse buttons.</returns>
         private static bool SetMouseHotKeyCode(int keyCode)
         {
-            if ((VirtualKey)keyCode == VirtualKey.XButton1
-                || (VirtualKey)keyCode == VirtualKey.XButton2)
+            if ((VirtualKey)keyCode == VirtualKey.XButton1)
             {
                 mouseHotKeyCode = (int)MouseMessages.ExtraMouseUp;
+                mouseExtraButtonIndex = 1;
+                return true;
+            }
+            if ((VirtualKey)keyCode == VirtualKey.XButton2)
+            {
+                mouseHotKeyCode = (int)MouseMessages.ExtraMouseUp;
+                mouseExtraButtonIndex = 2;
                 return true;
             }
             if ((VirtualKey)keyCode == VirtualKey.MiddleButton)
@@ -179,7 +182,6 @@ namespace HLLMapCapture
             WindowInteropHelper windowInteropHelper = new WindowInteropHelper(_Window);
             UnregisterHotKey(windowInteropHelper.Handle, HOTKEY_ID);
             UnregisterHotKey(windowInteropHelper.Handle, HOTKEY_ID2);
-            isHotkeyRegisterd = false;
         }
 
         // Hook for keyboard events
@@ -199,39 +201,76 @@ namespace HLLMapCapture
         }
 
         // Hook for mouse events
-        private static nint OnMouseHotKeyPressed(int nCode, nint wParam, nint lParam)
+        private static nint LLMouseProc(int nCode, nint wParam, nint lParam)
         {
-            if(wParam == mouseHotKeyCode &&
-               _mouseActionThread != null && _mouseActionThread.IsAlive)
+            if (wParam != mouseHotKeyCode)
+            {
+                return CallNextHookEx(_mouseHookID, nCode, wParam, lParam);
+            }
+            if (mouseHotKeyCode == (int)MouseMessages.ExtraMouseUp)
+            {
+                MSLLHOOKSTRUCT hookStruct =
+                    (MSLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(MSLLHOOKSTRUCT));
+                uint xButton = (hookStruct.mouseData >> 16);
+                if (xButton == mouseExtraButtonIndex)
+                    OnMouseHotKeyPressed();
+            }
+            else if (mouseHotKeyCode == (int)MouseMessages.MiddleMouseUp)
+                OnMouseHotKeyPressed();
+
+            return CallNextHookEx(_mouseHookID, nCode, wParam, lParam);
+        }
+
+        private static void OnMouseHotKeyPressed()
+        {
+            if (_mouseActionThread != null && _mouseActionThread.IsAlive)
             {
                 log.Warn("Can't trigger parallel map capture, still processing last screenshot!");
+                return;
             }
-            if (wParam == mouseHotKeyCode && 
-                (_mouseActionThread == null || !_mouseActionThread.IsAlive))
+            // Start a thread. Don't block 
+            _mouseActionThread =
+            new Thread(() =>
             {
-                // Start a thread. Don't block 
-                _mouseActionThread = 
-                new Thread(() =>
-                {
-                    Thread.CurrentThread.IsBackground = false;
-                    action?.Invoke();
-                });
-                _mouseActionThread.Start();
-                log.Info("Mouse Hotkey Pressed.");
-            }
-            return CallNextHookEx(_mouseHookID, nCode, wParam, lParam);
+                // Wait for the map to open in-game
+                Thread.CurrentThread.IsBackground = false;
+                Thread.Sleep(delayMS);
+                action?.Invoke();
+            });
+            _mouseActionThread.Start();
+            log.Info("Mouse Hotkey Pressed.");
+
         }
 
         private static void OnHotKeyPressed()
         {
             try
             {
+                log.Info("Mouse Hotkey Pressed.");
+                // Stop HotKey hook temporarily
                 UnregisterHotKey();
-                ToggleMap();
-                Thread.Sleep(delayMS);
-                log.Info("Hotkey Pressed.");
-                action?.Invoke();
+                // Fire the key event as if pressed normally
+                RefireKeyEvent();
                 RegisterHotKey((int)hotKeyCode);
+                // Only start capture task, when prior task was finished
+                if (_mouseActionThread != null &&
+                    _mouseActionThread.IsAlive)
+                {
+                    log.Warn("Can't trigger parallel map capture, still processing last screenshot!");
+                    return;
+                }
+
+                _mouseActionThread =
+                new Thread(() =>
+                {
+                    // Wait for the map to open in-game
+                    Thread.CurrentThread.IsBackground = false;
+                    Thread.Sleep(delayMS);
+                    action?.Invoke();
+                });
+
+                // Start capture task in thread
+                _mouseActionThread.Start();
             }
             catch (Exception ex)
             {
@@ -247,10 +286,9 @@ namespace HLLMapCapture
         /// Fires the keyboard event which was intercepted by the hotkey triggering,
         /// to open/close the map in game.
         /// </summary>
-        private static void ToggleMap()
+        private static void RefireKeyEvent()
         {
             keybd_event((byte)hotKeyCode, 0, 1u, 0u);
-            isMapOpen = !isMapOpen;
         }
 
         /// <summary>
@@ -262,5 +300,21 @@ namespace HLLMapCapture
             ExtraMouseUp = 524
         }
 
+        [StructLayout(LayoutKind.Sequential)]
+        public struct MSLLHOOKSTRUCT
+        {
+            public POINT pt;
+            public uint mouseData;
+            public uint flags;
+            public uint time;
+            public IntPtr dwExtraInfo;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct POINT
+        {
+            public int x;
+            public int y;
+        }
     }
 }
