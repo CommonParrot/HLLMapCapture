@@ -44,6 +44,9 @@ internal static class ScreenCapture
 
         int heightFromBottom = -1;
 
+        // If the monitor is 1080p high, use the specific detection instead
+        if (screenshot.Height == 1080) return FHDSpecificDetection(screenshot);
+
         // Check pixel brightness coming from the bottom center/left of the image.
         // (Dodging the bright ui elements, which get in the middle of the screen on ultrawide monitors)
         // When the brightness delta is higher than the detection delta,
@@ -168,7 +171,7 @@ internal static class ScreenCapture
         
         // The maps in HLL always have 10x10 map grids.
         // There are 11 vertical grid lines if you the edges of the map and 9 if not.
-        if (gridLineCount < 9 && gridLineCount <= 11)
+        if (gridLineCount < 9)
         {
             StaticLog.For(typeof(ScreenCapture)).Warn($"To few gridlines detected. " +
                 "Be sure to zoom to 1x for capture.");
@@ -191,6 +194,92 @@ internal static class ScreenCapture
 
         StaticLog.For(typeof(ScreenCapture)).Info("Map found in screenshot. " +
             "Continuing processing.");
+        return map;
+    }
+
+    /// <summary>
+    /// An update shrank the map screen by 20x20pixels at 1080p, making the image more blurry.
+    /// It is not possible anymore to detect the maps bottom border with the pixel brightness difference.
+    /// So this is a hardcoded specific detection for 1080p (in height) monitors.
+    /// </summary>
+    /// <param name="screenshot">A screenshot</param>
+    /// <returns>The map cut out from the screenshot or null</returns>
+    public static Bitmap? FHDSpecificDetection(Bitmap screenshot)
+    {
+        Bitmap? map = null;
+        int width = screenshot.Width;
+        // The map is 862x861 big on 1080p height resolution monitors
+        int mapWidth = 862;
+
+        // Stats are 21 pixels high
+        int mapHeight = 861 + 21;
+
+        // Specific height from bottom (screen height is counted from top to bottom)
+        int heightFromBottom = 1080 - 129;
+
+        // Find the left edge of the map
+        // (important for when the map isn't centered because of commander screen)
+        int xPosLeft = -1;
+        int minBrightnessDelta = 85;
+        int lastPixelBrightness = -1;
+        
+        for (int i = screenshot.Width/2; i >= 0; --i)
+        {
+            int brightness = (int)CalculateColorBrightness(
+                screenshot.GetPixel(i, heightFromBottom));
+
+            if (lastPixelBrightness > -1 && 
+                lastPixelBrightness - brightness >= minBrightnessDelta)
+            {
+                xPosLeft = i+1;
+                break;
+            }
+            lastPixelBrightness = brightness;
+        }
+
+        // Count the grid lines of the map to determine whether it is zoomed out to 1x
+        int gridLineCount = 0;
+        int minGridLineDistance = 80;
+        int currentGridLineDistance = 0;
+        float brightSum = -1;
+
+        for (int i = 0; i <= mapWidth; ++i)
+        {
+            int bright = (int) CalculateColorBrightness(
+                screenshot.GetPixel(xPosLeft + i, heightFromBottom));
+            if (brightSum == -1)
+            {
+                brightSum = bright;
+                continue;
+            }
+            float meanBright = brightSum / i;
+            if (currentGridLineDistance >= minGridLineDistance && Math.Abs(bright) > 1.3 * meanBright)
+            {
+                ++gridLineCount;
+                currentGridLineDistance = 0;
+            }
+            // This distance ensures that that no line is detected twice
+            ++currentGridLineDistance;
+            brightSum += bright;
+        }
+
+        // The maps in HLL always have 10x10 map grids.
+        // There are 11 vertical grid lines if you the edges of the map and 9 if not.
+        if (gridLineCount < 9)
+        {
+            StaticLog.For(typeof(ScreenCapture)).Warn($"To few gridlines detected. " +
+                "Be sure to open the map and zoom to 1x for capture.");
+            return map;
+        }
+
+
+        Rectangle section = new Rectangle(xPosLeft, heightFromBottom + 1 - mapHeight,
+            mapWidth, mapHeight);
+        map = screenshot.Clone(section, screenshot.PixelFormat);
+
+        StaticLog.For(typeof(ScreenCapture)).Info("Map found in screenshot. " +
+            "Continuing processing.");
+
         return map;
     }
     
