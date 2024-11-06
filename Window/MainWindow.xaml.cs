@@ -272,6 +272,7 @@ public partial class MainWindow : AdonisWindow
         {
             stateMessage = "Screenshot was saved, but FTP upload failed.";
             log.Error($"Screenshot was saved, but FTP upload failed: {ex.Message}");
+            log.Error($"FTP InnerException: {ex.InnerException?.Message}");
             Dispatcher.Invoke(delegate () { ShowStateMessage(stateMessage); });
             return;
         }
