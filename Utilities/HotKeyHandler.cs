@@ -6,13 +6,13 @@ using Windows.System;
 
 namespace HLLMapCapture
 {
-    internal static class HotKey
+    internal partial class HotKeyHandler
     {
-        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(typeof(HotKey));
+        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(typeof(HotKeyHandler));
 
-        private static Window? _Window;
+        private Window? _Window;
 
-        private static HwndSource? _source;
+        private HwndSource? _source;
 
         private const int HOTKEY_ID = 9000;
 
@@ -23,31 +23,39 @@ namespace HLLMapCapture
 
         private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
 
-        private static LowLevelMouseProc _mouseProc = LLMouseProc;
+        private LowLevelMouseProc _mouseProc;
         // Reference for the mouse hook. Used for disconnecting the hook.
-        private static IntPtr _mouseHookID = IntPtr.Zero;
+        private IntPtr _mouseHookID = IntPtr.Zero;
         // Value which is checked against in the _mouseProc, when a mouse message is received
-        private static int mouseHotKeyCode = 520;
-        private static int mouseExtraButtonIndex = 1;
-        public static Thread? _mouseActionThread = null;
+        private int mouseHotKeyCode = 520;
+        private int mouseExtraButtonIndex = 1;
+        public Thread? _mouseActionThread = null;
 
-        public static bool isHotkeyRegisterd;
+        public bool isHotkeyRegisterd = false;
 
-        /// <summary>
         /// Behavior which is attached to the assigned hot key
-        /// </summary>
-        public static Action? action;
-
+        private Action? action;
 
         // Is M by default
-        private static uint hotKeyCode = 77;
+        private uint hotKeyCode = 77;
 
-        private static bool isMouseHotKey = false;
+        private bool isMouseHotKey = false;
 
-        // Minimum time between screenshots
-        public static int delayMS = 300;
+        private readonly int delayMS = 300;
 
-        public static void RegisterWindow(Window window, uint keyCode = 77)
+        public HotKeyHandler(int delay, Action? act)
+        {
+            delayMS = delay;
+            action = act;
+            _mouseProc = LLMouseProc;
+        }
+
+        /// <summary>
+        /// Registers the chosen keyboard hotkey with the application window
+        /// </summary>
+        /// <param name="window">Window of this application</param>
+        /// <param name="keyCode">Chosen hotkey keycode</param>
+        public void RegisterKeyboardKey(Window window, uint keyCode = 77)
         {
             isMouseHotKey = false;
             hotKeyCode = keyCode;
@@ -57,8 +65,12 @@ namespace HLLMapCapture
             _source.AddHook(HwndHook);
             RegisterHotKey((int)keyCode, mouseHotKey: false);
         }
-
-        public static void RegisterMouseKey(int keyCode)
+        
+        /// <summary>
+        /// Registers the chosen mouse hotkey
+        /// </summary>
+        /// <param name="keyCode"></param>
+        public void RegisterMouseKey(int keyCode)
         {
             isMouseHotKey = true;
             RegisterHotKey(keyCode, mouseHotKey: true);
@@ -67,7 +79,7 @@ namespace HLLMapCapture
         /// <summary>
         /// Unhooks all the hotkeys which might have been set.
         /// </summary>
-        public static void Unregister()
+        public void Unregister()
         {
             if (isHotkeyRegisterd)
             {
@@ -77,6 +89,14 @@ namespace HLLMapCapture
                 else UnhookWindowsHookEx(_mouseHookID);
                 isHotkeyRegisterd = false;
             }
+        }
+        
+        /// <summary>
+        /// Resets the action associated with this HotKeyHandler to null
+        /// </summary>
+        public void RemoveAction()
+        {
+            action = null;
         }
 
         /// <summary>
@@ -116,13 +136,13 @@ namespace HLLMapCapture
         private static extern IntPtr GetModuleHandle(string lpModuleName);
 
         /// <summary>
-        /// Registers a HotKey to the application window.
+        /// Registers a HotKey to the application window, when a keyboard key was chosen (mouse hooks work differently).
         /// Registers the key alone and in combination with the shift modifier.
         /// The two hotkeys are registered under the hotkey ids which are statically defined,
         /// in the class for future reference.
         /// </summary>
         /// <param name="keyCode">Keycode of the hotkey</param>
-        private static void RegisterHotKey(int keyCode, bool mouseHotKey = false)
+        private void RegisterHotKey(int keyCode, bool mouseHotKey = false)
         {
             if (mouseHotKey)
             {
@@ -151,7 +171,7 @@ namespace HLLMapCapture
         /// </summary>
         /// <param name="keyCode">Keycode from the VirtualKey enum range</param>
         /// <returns>True when the keycode is from the Middle or Extra Mouse buttons.</returns>
-        private static bool SetMouseHotKeyCode(int keyCode)
+        private bool SetMouseHotKeyCode(int keyCode)
         {
             if ((VirtualKey)keyCode == VirtualKey.XButton1)
             {
@@ -177,7 +197,7 @@ namespace HLLMapCapture
         /// Unregisters the two hotkeys (hotkey & hotkey+shift) referenced by
         /// the statically defined hotkey ids.
         /// </summary>
-        private static void UnregisterHotKey()
+        private void UnregisterHotKey()
         {
             WindowInteropHelper windowInteropHelper = new WindowInteropHelper(_Window);
             UnregisterHotKey(windowInteropHelper.Handle, HOTKEY_ID);
@@ -185,7 +205,7 @@ namespace HLLMapCapture
         }
 
         // Hook for keyboard events
-        private static IntPtr HwndHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        private IntPtr HwndHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
             if (msg == 786)
             {
@@ -201,7 +221,7 @@ namespace HLLMapCapture
         }
 
         // Hook for mouse events
-        private static nint LLMouseProc(int nCode, nint wParam, nint lParam)
+        private nint LLMouseProc(int nCode, nint wParam, nint lParam)
         {
             if (wParam != mouseHotKeyCode)
             {
@@ -221,7 +241,7 @@ namespace HLLMapCapture
             return CallNextHookEx(_mouseHookID, nCode, wParam, lParam);
         }
 
-        private static void OnMouseHotKeyPressed()
+        private void OnMouseHotKeyPressed()
         {
             if (_mouseActionThread != null && _mouseActionThread.IsAlive)
             {
@@ -242,7 +262,7 @@ namespace HLLMapCapture
 
         }
 
-        private static void OnHotKeyPressed()
+        private void OnHotKeyPressed()
         {
             try
             {
@@ -286,7 +306,7 @@ namespace HLLMapCapture
         /// Fires the keyboard event which was intercepted by the hotkey triggering,
         /// to open/close the map in game.
         /// </summary>
-        private static void RefireKeyEvent()
+        private void RefireKeyEvent()
         {
             keybd_event((byte)hotKeyCode, 0, 1u, 0u);
         }

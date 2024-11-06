@@ -26,6 +26,7 @@ public partial class MainWindow : AdonisWindow
     public string SelectedFolderPath { get; private set; } = "";
     private Settings settings;
     private string currentStateMessage = "";
+    private HotKeyHandler hotKeyHandler;
 
     /// <summary>
     /// Window setup, loads the icon, settings and sets the settings values in the UI.
@@ -100,6 +101,8 @@ public partial class MainWindow : AdonisWindow
             settings.SaveSettings();
             log.Info("FTP settings are now obfuscated.");
         }
+
+        hotKeyHandler = new HotKeyHandler(settings.ScreenCaptureDelayMS, new Action(StartMapCapture));
     }
 
     private void SelectFolderButton_Click(object sender, RoutedEventArgs e)
@@ -304,11 +307,12 @@ public partial class MainWindow : AdonisWindow
     /// <param name="e"></param>
     private void CaptureToggle_Click(object sender, RoutedEventArgs e)
     {
-        if (!isListening && !HotKey.isHotkeyRegisterd)
+        if (!isListening && !hotKeyHandler.isHotkeyRegisterd)
         {
-            if (settings.HotKey <= 6) HotKey.RegisterMouseKey(settings.HotKey);
-            else HotKey.RegisterWindow(this, (uint)settings.HotKey);
-            HotKey.action = new Action(StartMapCapture);
+            // The 6 indicates that a mouse key was specified
+            // The enum values come from the Windows VirtualKey Enum
+            if (settings.HotKey <= 6) hotKeyHandler.RegisterMouseKey(settings.HotKey);
+            else hotKeyHandler.RegisterKeyboardKey(this, (uint)settings.HotKey);
             isListening = true;
             ui_startButton.Visibility = Visibility.Hidden;
             ui_stopButton.Visibility = Visibility.Visible;
@@ -317,8 +321,8 @@ public partial class MainWindow : AdonisWindow
         }
         else
         {
-            HotKey.Unregister();
-            HotKey.action = null;
+            hotKeyHandler.Unregister();
+            hotKeyHandler.RemoveAction();
             isListening = false;
             ui_startButton.Visibility = Visibility.Visible;
             ui_stopButton.Visibility = Visibility.Hidden;
@@ -329,7 +333,7 @@ public partial class MainWindow : AdonisWindow
 
     private void Window_Closing(object sender, CancelEventArgs e)
     {
-        HotKey.Unregister();
+        hotKeyHandler.Unregister();
 
         settings.Username = ui_username.Text;
         settings.SaveSettings();

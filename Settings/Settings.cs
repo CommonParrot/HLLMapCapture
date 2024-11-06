@@ -10,6 +10,8 @@ internal class Settings
     public string LocalFolderPath { get; set; } = "";
     public string Username { get; set; } = "";
     public int HotKey { get; set; } = (int)VirtualKey.M;
+    // Delay in ms
+    public int ScreenCaptureDelayMS { get; set; } = 300;
     public bool CompressImages { get; set; } = true;
     public bool IsObfuscated { get; set; } = false;
     public string? FtpServer { get; set; } = "";
@@ -51,6 +53,11 @@ internal class Settings
             HotKey = hotKey;
         else
             HotKey = (int)VirtualKey.M;
+
+        if (int.TryParse(root.Element("HotKey")?.Value, out int screenCaptureDelay))
+            ScreenCaptureDelayMS = screenCaptureDelay;
+        else
+            ScreenCaptureDelayMS = 300;
 
         if (!IsObfuscated)
         {
@@ -107,6 +114,7 @@ internal class Settings
                     new XElement("LocalFolderPath", LocalFolderPath),
                     new XElement("Username", Username),
                     new XElement("HotKey", HotKey),
+                    new XElement("ScreenCaptureDelayMS", ScreenCaptureDelayMS),
                     new XElement("CompressImages", CompressImages),
                     new XElement("IsObfuscated", IsObfuscated),
                     xFtpServer, xFtpFolerPath, xFtpUsername, xFtpPassword)
