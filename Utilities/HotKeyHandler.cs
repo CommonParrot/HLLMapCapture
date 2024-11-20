@@ -43,6 +43,11 @@ namespace HLLMapCapture
 
         private readonly int delayMS = 300;
 
+        /// <summary>
+        /// Constructor for the HotKeyHandler class
+        /// </summary>
+        /// <param name="delay">Delay in ms until the action is triggered, after the HotKey is pressed</param>
+        /// <param name="act">Action which will be triggered by the HotKey</param>
         public HotKeyHandler(int delay, Action? act)
         {
             delayMS = delay;

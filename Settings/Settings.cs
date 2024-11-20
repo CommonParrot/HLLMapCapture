@@ -54,7 +54,7 @@ internal class Settings
         else
             HotKey = (int)VirtualKey.M;
 
-        if (int.TryParse(root.Element("HotKey")?.Value, out int screenCaptureDelay))
+        if (int.TryParse(root.Element("ScreenCaptureDelayMS")?.Value, out int screenCaptureDelay))
             ScreenCaptureDelayMS = screenCaptureDelay;
         else
             ScreenCaptureDelayMS = 300;
